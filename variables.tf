@@ -251,6 +251,12 @@ variable "custom_container_definitions" {
   default     = ""
 }
 
+variable "ecs_task_execution_iam_role_arn" {
+  description = "ARN of existing IAM role to use for ECS task execution"
+  type        = string
+  default     = ""
+}
+
 # Atlantis
 variable "atlantis_image" {
   description = "Docker image to run Atlantis with. If not specified, official Atlantis image will be used"

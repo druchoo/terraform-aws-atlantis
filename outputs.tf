@@ -15,7 +15,7 @@ output "atlantis_allowed_repo_names" {
 
 output "task_role_arn" {
   description = "The Atlantis ECS task role arn"
-  value       = aws_iam_role.ecs_task_execution.arn
+  value       = local.ecs_task_execution_iam_role_arn
 }
 
 output "vpc_id" {
