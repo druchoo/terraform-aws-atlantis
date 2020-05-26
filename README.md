@@ -201,6 +201,7 @@ No requirements.
 | ecs\_service\_deployment\_minimum\_healthy\_percent | The lower limit (as a percentage of the service's desiredCount) of the number of running tasks that must remain running and healthy in a service during a deployment | `number` | `50` | no |
 | ecs\_service\_desired\_count | The number of instances of the task definition to place and keep running | `number` | `1` | no |
 | ecs\_task\_cpu | The number of cpu units used by the task | `number` | `256` | no |
+| ecs\_task\_execution\_iam\_role\_arn | ARN of existing IAM role to use for ECS task execution | `string` | `""` | no |
 | ecs\_task\_memory | The amount (in MiB) of memory used by the task | `number` | `512` | no |
 | github\_webhooks\_cidr\_blocks | List of CIDR blocks used by GitHub webhooks | `list(string)` | <pre>[<br>  "140.82.112.0/20",<br>  "185.199.108.0/22",<br>  "192.30.252.0/22"<br>]</pre> | no |
 | internal | Whether the load balancer is internal or external | `bool` | `false` | no |

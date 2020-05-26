@@ -19,6 +19,9 @@ locals {
   alb_https_security_group_id = var.alb_https_security_group_id == "" ? module.alb_https_sg.this_security_group_id : var.alb_https_security_group_id
   atlantis_security_group_id  = var.atlantis_security_group_id == "" ? module.atlantis_sg.this_security_group_id : var.atlantis_security_group_id
 
+  # IAM
+  ecs_task_execution_iam_role_arn = var.ecs_task_execution_iam_role_arn != "" ? var.ecs_task_execution_iam_role_arn : aws_iam_role.ecs_task_execution.0.id
+
   # Include only one group of secrets - for github, gitlab or bitbucket
   has_secrets = var.atlantis_gitlab_user_token != "" || var.atlantis_github_user_token != "" || var.atlantis_bitbucket_user_token != ""
 
@@ -358,6 +361,8 @@ module "ecs" {
 }
 
 data "aws_iam_policy_document" "ecs_tasks" {
+  count = var.ecs_task_execution_iam_role_arn == "" ? 1 : 0
+
   statement {
     actions = [
       "sts:AssumeRole",
@@ -373,21 +378,25 @@ data "aws_iam_policy_document" "ecs_tasks" {
 }
 
 resource "aws_iam_role" "ecs_task_execution" {
+  count = var.ecs_task_execution_iam_role_arn == "" ? 1 : 0
+
   name               = "${var.name}-ecs_task_execution"
-  assume_role_policy = data.aws_iam_policy_document.ecs_tasks.json
+  assume_role_policy = data.aws_iam_policy_document.ecs_tasks.0.json
 
   tags = local.tags
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
-  count = length(var.policies_arn)
+  count = var.ecs_task_execution_iam_role_arn == "" ? length(var.policies_arn) : 0
 
-  role       = aws_iam_role.ecs_task_execution.id
+  role       = aws_iam_role.ecs_task_execution.0.id
   policy_arn = element(var.policies_arn, count.index)
 }
 
 // ref: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/specifying-sensitive-data.html
 data "aws_iam_policy_document" "ecs_task_access_secrets" {
+  count = var.ecs_task_execution_iam_role_arn == "" ? 1 : 0
+
   statement {
     effect = "Allow"
 
@@ -408,7 +417,7 @@ data "aws_iam_policy_document" "ecs_task_access_secrets" {
 data "aws_iam_policy_document" "ecs_task_access_secrets_with_kms" {
   count = var.ssm_kms_key_arn == "" ? 0 : 1
 
-  source_json = data.aws_iam_policy_document.ecs_task_access_secrets.json
+  source_json = data.aws_iam_policy_document.ecs_task_access_secrets.0.json
 
   statement {
     sid       = "AllowKMSDecrypt"
@@ -419,11 +428,11 @@ data "aws_iam_policy_document" "ecs_task_access_secrets_with_kms" {
 }
 
 resource "aws_iam_role_policy" "ecs_task_access_secrets" {
-  count = var.atlantis_github_user_token != "" || var.atlantis_gitlab_user_token != "" || var.atlantis_bitbucket_user_token != "" ? 1 : 0
+  count = (var.atlantis_github_user_token != "" || var.atlantis_gitlab_user_token != "" || var.atlantis_bitbucket_user_token != "") && var.ecs_task_execution_iam_role_arn == "" ? 1 : 0
 
   name = "ECSTaskAccessSecretsPolicy"
 
-  role = aws_iam_role.ecs_task_execution.id
+  role = aws_iam_role.ecs_task_execution.0.id
 
   policy = element(
     compact(
@@ -519,8 +528,8 @@ module "container_definition_bitbucket" {
 
 resource "aws_ecs_task_definition" "atlantis" {
   family                   = var.name
-  execution_role_arn       = aws_iam_role.ecs_task_execution.arn
-  task_role_arn            = aws_iam_role.ecs_task_execution.arn
+  execution_role_arn       = local.ecs_task_execution_iam_role_arn
+  task_role_arn            = local.ecs_task_execution_iam_role_arn
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   cpu                      = var.ecs_task_cpu
