@@ -101,11 +101,13 @@ Make sure that both private and public subnets were created in the same set of a
 If all provided subnets are public (no NAT gateway) then `ecs_service_assign_public_ip` should be set to `true`.
 
 
-### Secure Atlantis with ALB Built-in Authentication and Auth0
+### Secure Atlantis with ALB Built-in Authentication
+
+#### OpenID Connect (OIDC)
 
 You can use service like [Auth0](https://www.auth0.com) to secure access to Atlantis and require authentication on ALB. To enable this, you need to create Auth0 application and provide correct arguments to Atlantis module. Make sure to update application hostname, client id and client secret:
 
-```
+```hcl
 alb_authenticate_oidc = {
   issuer = "https://youruser.eu.auth0.com/"
   token_endpoint = "https://youruser.eu.auth0.com/oauth/token"
@@ -119,9 +121,28 @@ alb_authenticate_oidc = {
 
 Read more in [this post](https://medium.com/@sandrinodm/securing-your-applications-with-aws-alb-built-in-authentication-and-auth0-310ad84c8595).
 
-If you are using GitHub, you may allow it to trigger webhooks without authentication on ALB:
 
+#### AWS Cognito with SAML
+
+The AWS Cognito service allows you to define SAML applications tied to an identity provider (e.g., GSuite). The Atlantis ALB can then be configured to require an authenticated user managed by your identity provider.
+
+To configure AWS Cognito connecting to a GSuite SAML application, you can use the [gsuite-saml-cognito](https://github.com/alloy-commons/alloy-open-source/tree/master/terraform-modules/gsuite-saml-cognito#example-usage) Terraform module.
+
+To enable Cognito authentication on the Atlantis ALB, specify the following arguments containing attributes from your Cognito configuration.
+
+```hcl
+alb_authenticate_cognito = {
+  user_pool_arn       = "arn:aws:cognito-idp:us-west-2:1234567890:userpool/us-west-2_aBcDeFG"
+  user_pool_client_id = "clientid123"
+  user_pool_domain    = "sso.your-corp.com"
+}
 ```
+
+#### Allow GitHub Webhooks Unauthenticated Access
+
+If you are using one of the authentication methods above along with managed GitHub (not self-hosted enterprise version), you'll need to allow unauthenticated access to GitHub's Webhook static IPs:
+
+```hcl
 allow_unauthenticated_access = true
 allow_github_webhooks        = true
 ```
@@ -156,6 +177,7 @@ No requirements.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | acm\_certificate\_domain\_name | Route53 domain name to use for ACM certificate. Route53 zone for this domain should be created in advance. Specify if it is different from value in `route53_zone_name` | `string` | `""` | no |
+| alb\_authenticate\_cognito | Map of AWS Cognito authentication parameters to protect ALB (eg, using SAML). See https://www.terraform.io/docs/providers/aws/r/lb_listener.html#authenticate-cognito-action | `any` | `{}` | no |
 | alb\_authenticate\_oidc | Map of Authenticate OIDC parameters to protect ALB (eg, using Auth0). See https://www.terraform.io/docs/providers/aws/r/lb_listener.html#authenticate-oidc-action | `any` | `{}` | no |
 | alb\_ingress\_cidr\_blocks | List of IPv4 CIDR ranges to use on all ingress rules of the ALB. | `list(string)` | <pre>[<br>  "0.0.0.0/0"<br>]</pre> | no |
 | alb\_http\_security\_group\_id | Existing security group with HTTP ports open for specific IPv4 CIDR block (or everybody), egress ports are all world open | `string` | "" | no |
@@ -181,12 +203,12 @@ No requirements.
 | atlantis\_gitlab\_user | Gitlab username that is running the Atlantis command | `string` | `""` | no |
 | atlantis\_gitlab\_user\_token | Gitlab token of the user that is running the Atlantis command | `string` | `""` | no |
 | atlantis\_gitlab\_user\_token\_ssm\_parameter\_name | Name of SSM parameter to keep atlantis\_gitlab\_user\_token | `string` | `"/atlantis/gitlab/user/token"` | no |
+| atlantis\_hide\_prev\_plan\_comments | Enables atlantis server --hide-prev-plan-comments hiding previous plan comments on update | `string` | `"false"` | no |
 | atlantis\_image | Docker image to run Atlantis with. If not specified, official Atlantis image will be used | `string` | `""` | no |
 | atlantis\_log\_level | Log level that Atlantis will run with. Accepted values are: <debug\|info\|warn\|error> | `string` | `"debug"` | no |
 | atlantis\_port | Local port Atlantis should be running on. Default value is most likely fine. | `number` | `4141` | no |
 | atlantis\_repo\_whitelist | List of allowed repositories Atlantis can be used with | `list(string)` | n/a | yes |
 | atlantis\_version | Verion of Atlantis to run. If not specified latest will be used | `string` | `"latest"` | no |
-| aws\_ssm\_path | AWS ARN prefix for SSM (public AWS region or Govcloud). Valid options: aws, aws-us-gov. | `string` | `"aws"` | no |
 | azs | A list of availability zones in the region | `list(string)` | `[]` | no |
 | certificate\_arn | ARN of certificate issued by AWS ACM. If empty, a new ACM certificate will be created and validated using Route53 DNS | `string` | `""` | no |
 | cidr | The CIDR block for the VPC which will be created if `vpc_id` is not specified | `string` | `""` | no |

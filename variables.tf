@@ -96,6 +96,12 @@ variable "alb_authenticate_oidc" {
   default     = {}
 }
 
+variable "alb_authenticate_cognito" {
+  description = "Map of AWS Cognito authentication parameters to protect ALB (eg, using SAML). See https://www.terraform.io/docs/providers/aws/r/lb_listener.html#authenticate-cognito-action"
+  type        = any
+  default     = {}
+}
+
 variable "allow_unauthenticated_access" {
   description = "Whether to create ALB listener rule to allow unauthenticated access for certain CIDR blocks (eg. allow GitHub webhooks to bypass OIDC authentication)"
   type        = bool
@@ -318,6 +324,12 @@ variable "atlantis_log_level" {
   default     = "debug"
 }
 
+variable "atlantis_hide_prev_plan_comments" {
+  description = "Enables atlantis server --hide-prev-plan-comments hiding previous plan comments on update"
+  type        = string
+  default     = "false"
+}
+
 # Github
 variable "atlantis_github_user" {
   description = "GitHub username that is running the Atlantis command"
@@ -395,10 +407,4 @@ variable "security_group_ids" {
   description = "List of one or more security groups to be added to the load balancer"
   type        = list(string)
   default     = []
-}
-
-variable "aws_ssm_path" {
-  description = "AWS ARN prefix for SSM (public AWS region or Govcloud). Valid options: aws, aws-us-gov."
-  type        = string
-  default     = "aws"
 }
